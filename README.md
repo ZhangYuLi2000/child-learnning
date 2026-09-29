@@ -37,6 +37,7 @@ src/
 ├── interaction/
 │   ├── DragManager.ts      Pointer Events 拖拽（鼠标 / 触摸 / 触控笔一套逻辑）
 │   └── DropZone.ts         小狗周围的方位圆圈（挂在小狗的 DirectionContainer 下）
+├── audio/SoundManager.ts   Web Audio 合成音效 + 静音开关
 ├── ui/
 │   ├── GameUI.ts           顶栏、题目、托盘、放置标签、弹层
 │   ├── DirectionCard.ts    方向卡片 + 中文显示映射
@@ -73,6 +74,7 @@ tests/                      DirectionSystem / LevelManager / ScoreManager 单元
 
 - 放对：卡片吸附到圆圈、星星粒子、“太棒啦！”、小狗跳一下并快速摇尾巴。
 - 放错：卡片平滑回到原位、圆圈闪橙色、“再想一想～”；连续错 2 次给轻提示（如“看看小狗的脸朝哪里？”），不直接给答案。
+- 音效：拿起卡片、放对（叮咚）、放错（柔和低音）、小狗转身、回合 / 过关 / 通关旋律，全部由 Web Audio 实时合成（`src/audio/SoundManager.ts`），无音频文件；顶栏「🔊 声音」按钮可静音，设置保存在 localStorage。
 - 拖到空白处：卡片回原位并提示“把卡片放进小狗身边的圆圈里哦～”，不计错误。
 
 ## 后续可扩展

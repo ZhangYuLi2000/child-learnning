@@ -9,6 +9,8 @@ export interface UIHandlers {
   onRestartLevel(): void;
   onNextLevel(): void;
   onRestartGame(): void;
+  onToggleSound(): boolean;
+  onButton(): void;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -30,6 +32,7 @@ export class GameUI {
   private readonly overlay: HTMLDivElement;
   private readonly labels = new Map<Direction, HTMLDivElement>();
   private readonly handlers: UIHandlers;
+  private readonly soundButton: HTMLButtonElement;
 
   constructor(root: HTMLElement, handlers: UIHandlers) {
     this.handlers = handlers;
@@ -42,9 +45,15 @@ export class GameUI {
     this.progress = el('div', 'progress');
     const restart = el('button', 'icon-button', '↻ 重玩');
     restart.type = 'button';
-    restart.addEventListener('click', () => this.handlers.onRestartLevel());
+    restart.addEventListener('click', () => {
+      this.handlers.onButton();
+      this.handlers.onRestartLevel();
+    });
+    this.soundButton = el('button', 'icon-button sound-button');
+    this.soundButton.type = 'button';
+    this.soundButton.addEventListener('click', () => this.setSoundMuted(this.handlers.onToggleSound()));
     const right = el('div', 'topbar-right');
-    right.append(this.progress, restart);
+    right.append(this.progress, this.soundButton, restart);
     const left = el('div', 'topbar-left');
     left.append(title, this.levelBadge);
     topbar.append(left, right);
@@ -145,6 +154,12 @@ export class GameUI {
     this.overlay.innerHTML = '';
   }
 
+  setSoundMuted(muted: boolean): void {
+    this.soundButton.textContent = muted ? '🔇 静音' : '🔊 声音';
+    this.soundButton.setAttribute('aria-pressed', String(muted));
+    this.soundButton.setAttribute('aria-label', muted ? '打开声音' : '关闭声音');
+  }
+
   private openOverlay(
     icon: string,
     title: string,
@@ -159,6 +174,7 @@ export class GameUI {
       const button = el('button', b.primary ? 'big-button primary' : 'big-button', b.text);
       button.type = 'button';
       button.addEventListener('click', () => {
+        this.handlers.onButton();
         this.hideOverlay();
         b.onClick();
       });

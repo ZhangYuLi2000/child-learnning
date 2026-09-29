@@ -1,3 +1,4 @@
+import { SoundManager } from '../audio/SoundManager';
 import { levels } from '../data/levels';
 import { DragManager, type DropResult } from '../interaction/DragManager';
 import { DropZone } from '../interaction/DropZone';
@@ -29,6 +30,7 @@ export class Game {
   private readonly zones = new Map<Direction, DropZone>();
   private readonly levelManager = new LevelManager(levels);
   private readonly score = new ScoreManager();
+  private readonly sound = new SoundManager();
   private phase: Phase = 'menu';
   private roundToken = 0;
   private hovered: DropZone | null = null;
@@ -43,7 +45,17 @@ export class Game {
       onRestartLevel: () => this.restart(),
       onNextLevel: () => this.nextLevel(),
       onRestartGame: () => this.start(),
+      onToggleSound: () => {
+        const muted = this.sound.toggleMuted();
+        this.sound.play('click');
+        return muted;
+      },
+      onButton: () => {
+        this.sound.unlock();
+        this.sound.play('click');
+      },
     });
+    this.ui.setSoundMuted(this.sound.muted);
     this.sceneManager = new SceneManager(this.ui.stage);
     this.sceneManager.add(new Environment().root);
 
@@ -117,6 +129,7 @@ export class Game {
     if (newLevel) this.ui.clearPlaced();
     if (turning) {
       this.ui.setQuestion('小狗转身啦～ 看看它的脸朝哪里？');
+      this.sound.play('turn');
       await this.animal.rotateTo(round.rotation);
       if (token !== this.roundToken) return;
     }
@@ -164,6 +177,8 @@ export class Game {
   }
 
   private onDragStart(card: DirectionCard): void {
+    this.sound.unlock();
+    this.sound.play('pickup');
     this.ui.setQuestion(`小狗的${directionLabels[card.direction]}方在哪里？`);
   }
 
@@ -177,6 +192,7 @@ export class Game {
 
     if (this.phase !== 'playing') return { accepted: false };
     if (!zone) {
+      this.sound.play('miss');
       this.ui.feedback.message('把卡片放进小狗身边的圆圈里哦～');
       this.ui.setQuestion(DEFAULT_QUESTION);
       return { accepted: false };
@@ -188,12 +204,14 @@ export class Game {
       card.setUsed(true);
       const snapTo = this.zoneScreenPosition(zone.direction);
       this.ui.feedback.success(snapTo);
+      this.sound.play('correct');
       this.animal.celebrate();
       return { accepted: true, snapTo };
     }
 
     this.score.recordMistake();
     zone.flashWrong();
+    this.sound.play('wrong');
     card.wiggle();
     const needHint = this.score.consecutiveMistakes >= HINT_AFTER_MISTAKES;
     this.ui.feedback.retry(needHint ? hintFor(card.direction) : undefined);
@@ -221,6 +239,7 @@ export class Game {
     const round = this.levelManager.currentRound;
     this.ui.setProgress(round.roundIndex + 1, round.totalRounds);
     this.ui.setQuestion('全部放对啦！🎉');
+    this.sound.play('round');
     const token = this.roundToken;
 
     window.setTimeout(() => {
@@ -233,8 +252,10 @@ export class Game {
       const stars = this.score.finishLevel();
       this.phase = 'menu';
       if (this.levelManager.hasNextLevel()) {
+        this.sound.play('level');
         this.ui.showLevelComplete(round.level, stars, true);
       } else {
+        this.sound.play('win');
         this.ui.showAllComplete(this.score.totalStars, this.levelManager.levelCount * 3);
       }
     }, ROUND_PAUSE_MS);
