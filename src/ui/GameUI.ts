@@ -130,7 +130,7 @@ export class GameUI {
     this.openOverlay(
       '🐶',
       '小动物的方向大冒险',
-      '把方向卡片拖到小狗身边的圆圈里。\n注意：是小狗自己的前后左右哦！',
+      '先点一张方向卡片，再点小狗身边的圆圈。\n注意：是小狗自己的前后左右哦！',
       [{ text: '开始游戏', primary: true, onClick: () => this.handlers.onStart() }],
     );
   }

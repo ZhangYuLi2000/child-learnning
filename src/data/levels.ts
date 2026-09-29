@@ -7,9 +7,9 @@ export type RotationPlan =
 export interface LevelConfig {
   id: number;
   title: string;
-  /** 本关需要孩子拖拽放置的方向卡片。 */
+  /** 本关需要孩子点选放置的方向卡片。 */
   directions: readonly Direction[];
-  /** 本关预先摆好、作为提示的方向（不需要拖拽）。 */
+  /** 本关预先摆好、作为提示的方向（不需要放置）。 */
   givenDirections?: readonly Direction[];
   rotation: RotationPlan;
   difficulty: number;

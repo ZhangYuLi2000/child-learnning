@@ -18,7 +18,7 @@ export function componentHint(direction: Direction): string {
     .join(' + ');
 }
 
-/** 底部可拖拽的方向卡片。 */
+/** 底部可点选的方向卡片。 */
 export class DirectionCard {
   readonly direction: Direction;
   readonly element: HTMLDivElement;
@@ -29,6 +29,8 @@ export class DirectionCard {
     this.element.className = `direction-card card-${direction}`;
     this.element.dataset.direction = direction;
     this.element.setAttribute('role', 'button');
+    this.element.tabIndex = 0;
+    this.element.setAttribute('aria-pressed', 'false');
     this.element.setAttribute('aria-label', `方向卡片：${directionLabels[direction]}`);
     const label = document.createElement('span');
     label.className = 'card-label';
@@ -50,8 +52,9 @@ export class DirectionCard {
     this.element.classList.toggle('used', used);
   }
 
-  setDragging(dragging: boolean): void {
-    this.element.classList.toggle('drag-source', dragging);
+  setSelected(selected: boolean): void {
+    this.element.classList.toggle('selected', selected);
+    this.element.setAttribute('aria-pressed', String(selected));
   }
 
   wiggle(): void {

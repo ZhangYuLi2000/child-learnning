@@ -1,7 +1,7 @@
 import { SoundManager } from '../audio/SoundManager';
 import { levels } from '../data/levels';
-import { DragManager, type DropResult } from '../interaction/DragManager';
 import { DropZone } from '../interaction/DropZone';
+import { TapManager, type PlaceResult } from '../interaction/TapManager';
 import { Animal } from '../scene/Animal';
 import { Environment } from '../scene/Environment';
 import { SceneManager, type ScreenPoint } from '../scene/SceneManager';
@@ -18,7 +18,7 @@ type Phase = 'menu' | 'rotating' | 'playing' | 'between';
 const HIT_RADIUS = 1.5;
 const HINT_AFTER_MISTAKES = 2;
 const ROUND_PAUSE_MS = 1100;
-const DEFAULT_QUESTION = '把卡片拖到小狗身边的圆圈里吧！';
+const DEFAULT_QUESTION = '先点一张卡片，再点小狗身边的圆圈吧！';
 
 /** 游戏生命周期：initialize → start → (回合 / 关卡) → nextLevel / restart。 */
 export class Game {
@@ -26,7 +26,7 @@ export class Game {
   private ui!: GameUI;
   private sceneManager!: SceneManager;
   private animal!: Animal;
-  private drag!: DragManager;
+  private tap!: TapManager;
   private readonly zones = new Map<Direction, DropZone>();
   private readonly levelManager = new LevelManager(levels);
   private readonly score = new ScoreManager();
@@ -67,12 +67,12 @@ export class Game {
       this.animal.directionContainer.add(zone.object);
     }
 
-    this.drag = new DragManager({
-      canStart: () => this.phase === 'playing',
-      onStart: (card) => this.onDragStart(card),
-      onMove: (card, point) => this.onDragMove(card, point),
-      onDrop: (card, point) => this.onDrop(card, point),
-      onSettled: (card, accepted) => this.onSettled(card, accepted),
+    this.tap = new TapManager(this.ui.stage, {
+      canSelect: () => this.phase === 'playing',
+      onSelect: (card) => this.onSelect(card),
+      onHover: (point) => this.setHovered(point ? this.zoneAt(point) : null),
+      onPlace: (card, point) => this.onPlace(card, point),
+      onSettled: (card) => this.onSettled(card),
     });
 
     const first = this.levelManager.currentRound;
@@ -118,9 +118,9 @@ export class Game {
     this.hovered = null;
     if (newLevel) this.score.startLevel();
 
-    this.drag.unregisterAll();
+    this.tap.unregisterAll();
     const cards = this.ui.renderCards(round.directions, round.givenDirections.length > 0);
-    cards.forEach((card) => this.drag.register(card));
+    cards.forEach((card) => this.tap.register(card));
     this.ui.setTrayEnabled(false);
     this.ui.setLevel(round.level);
     this.ui.setProgress(round.roundIndex, round.totalRounds);
@@ -176,36 +176,43 @@ export class Game {
     if (zone?.isOpen) zone.setState('hover');
   }
 
-  private onDragStart(card: DirectionCard): void {
+  private onSelect(card: DirectionCard | null): void {
+    if (this.phase !== 'playing') return;
+    if (!card) {
+      this.setHovered(null);
+      this.ui.setQuestion(DEFAULT_QUESTION);
+      return;
+    }
     this.sound.unlock();
     this.sound.play('pickup');
-    this.ui.setQuestion(`小狗的${directionLabels[card.direction]}方在哪里？`);
+    this.ui.setQuestion(`小狗的${directionLabels[card.direction]}方在哪里？点一点圆圈吧！`);
   }
 
-  private onDragMove(_card: DirectionCard, point: ScreenPoint): void {
-    this.setHovered(this.zoneAt(point));
-  }
-
-  private onDrop(card: DirectionCard, point: ScreenPoint): DropResult {
-    const zone = this.zoneAt(point);
-    this.setHovered(null);
-
+  private onPlace(card: DirectionCard | null, point: ScreenPoint): PlaceResult {
     if (this.phase !== 'playing') return { accepted: false };
-    if (!zone) {
-      this.sound.play('miss');
-      this.ui.feedback.message('把卡片放进小狗身边的圆圈里哦～');
-      this.ui.setQuestion(DEFAULT_QUESTION);
+    const zone = this.zoneAt(point);
+    if (!card) {
+      if (zone) {
+        this.sound.play('miss');
+        this.ui.feedback.message('先点下面的一张卡片哦～');
+      }
       return { accepted: false };
     }
+    if (!zone) {
+      this.sound.play('miss');
+      this.ui.feedback.message('点小狗身边的圆圈哦～');
+      return { accepted: false };
+    }
+    this.setHovered(null);
 
     if (isCorrectPlacement(card.direction, zone.direction)) {
       this.score.recordCorrect();
       zone.setState('placed');
-      card.setUsed(true);
       const snapTo = this.zoneScreenPosition(zone.direction);
       this.ui.feedback.success(snapTo);
       this.sound.play('correct');
       this.animal.celebrate();
+      this.ui.setQuestion(DEFAULT_QUESTION);
       return { accepted: true, snapTo };
     }
 
@@ -218,18 +225,10 @@ export class Game {
     return { accepted: false };
   }
 
-  private onSettled(card: DirectionCard, accepted: boolean): void {
-    if (!accepted) {
-      if (this.phase === 'playing' && !this.drag.isDragging) this.ui.setQuestion(DEFAULT_QUESTION);
-      return;
-    }
+  private onSettled(card: DirectionCard): void {
     if (this.zones.get(card.direction)?.state !== 'placed') return;
     this.ui.showPlaced(card.direction, 'placed');
-    if (this.openZones().length > 0) {
-      if (!this.drag.isDragging) this.ui.setQuestion(DEFAULT_QUESTION);
-      return;
-    }
-    this.completeRound();
+    if (this.openZones().length === 0) this.completeRound();
   }
 
   private completeRound(): void {

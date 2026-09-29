@@ -245,9 +245,12 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
   font-weight: 800;
-  cursor: grab;
+  cursor: pointer;
   touch-action: none;
-  transition: transform 0.15s, opacity 0.2s;
+  user-select: none;
+  -webkit-user-select: none;
+  border: 4px solid transparent;
+  transition: transform 0.15s, opacity 0.2s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .direction-card:hover {
@@ -273,20 +276,26 @@ body {
   visibility: hidden;
 }
 
-.direction-card.drag-source {
-  opacity: 0.3;
+.direction-card.selected {
+  border-color: #ffb400;
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 0 0 6px rgba(255, 180, 0, 0.3), 0 14px 26px rgba(45, 49, 66, 0.22);
+}
+
+.direction-card:focus-visible {
+  outline: 4px solid #4dabf7;
+  outline-offset: 3px;
 }
 
 .direction-card.wiggle {
   animation: wiggle 0.45s ease-in-out;
 }
 
-.drag-ghost {
+.fly-ghost {
   position: fixed;
   z-index: 50;
   margin: 0;
   pointer-events: none;
-  cursor: grabbing;
   box-shadow: 0 16px 30px rgba(45, 49, 66, 0.25);
 }
 
